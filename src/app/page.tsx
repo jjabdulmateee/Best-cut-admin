@@ -1,101 +1,120 @@
-import Image from "next/image";
+"use client";
+
+import { FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const router = useRouter();
+  const { user, loading: authLoading, error: authError, signIn } = useAuth();
+  const {
+    isAdmin,
+    loading: adminLoading,
+    error: adminError,
+  } = useAdminCheck();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  useEffect(() => {
+    if (!authLoading && !adminLoading && user && isAdmin) {
+      router.replace("/dashboard");
+    }
+  }, [authLoading, adminLoading, isAdmin, router, user]);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitting(true);
+    try {
+      await signIn(email.trim(), password);
+      toast.success("Signed in");
+      router.replace("/dashboard");
+    } catch {
+      toast.error("Login failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const showAccessDenied = user && !adminLoading && !isAdmin;
+
+  return (
+    <div className="min-h-screen bg-brand-900 text-foreground flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-brand-800 border border-brand-700 rounded-2xl shadow-xl p-8 space-y-6">
+        <header className="space-y-2">
+          <p className="text-sm uppercase tracking-[0.2em] text-gray-400">
+            Best Cut Admin
+          </p>
+          <h1 className="text-2xl font-semibold">Sign in</h1>
+          <p className="text-sm text-gray-400">
+            Use your admin email and password to access the dashboard.
+          </p>
+        </header>
+
+        {(authLoading || adminLoading) && (
+          <div className="flex items-center gap-2 text-sm text-gray-300">
+            <LoadingSpinner />
+            <span>Checking your session…</span>
+          </div>
+        )}
+
+        {showAccessDenied && (
+          <div className="rounded-lg border border-danger/30 bg-danger/10 text-danger text-sm p-3">
+            Your account is not authorized for admin access.
+          </div>
+        )}
+
+        {(authError || adminError) && (
+          <div className="rounded-lg border border-danger/30 bg-danger/10 text-danger text-sm p-3">
+            {authError || adminError}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm text-gray-300">Email</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg bg-brand-700 border border-brand-600 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-success placeholder:text-gray-500"
+              placeholder="admin@bestcut.com"
+              autoComplete="email"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm text-gray-300">Password</label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-lg bg-brand-700 border border-brand-600 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-success placeholder:text-gray-500"
+              placeholder="••••••••"
+              autoComplete="current-password"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting || authLoading || adminLoading}
+            className="w-full rounded-lg bg-success hover:bg-green-600 transition-colors text-black font-semibold py-2 flex items-center justify-center gap-2 disabled:opacity-60"
           >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+            {submitting ? <LoadingSpinner /> : null}
+            <span>{submitting ? "Signing in..." : "Sign in"}</span>
+          </button>
+        </form>
+
+        <p className="text-xs text-gray-500">
+          Access is restricted to approved admins. Contact support if you need
+          help.
+        </p>
+      </div>
     </div>
   );
 }
