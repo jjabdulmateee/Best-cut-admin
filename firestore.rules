@@ -77,12 +77,9 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Platform Configuration (Phase F)
+    // Platform Configuration
     match /platform/config {
-      // READ: Anyone authenticated (Best Cut App needs to see emergencyFreeze)
-      allow read: if isAuthenticated();
-      // STRICT: Only Cloud Functions can toggle system-wide states.
-      allow write: if false; 
+      allow read, write: if isAdmin();
     }
 
     // Notifications Collection (Phase 2)

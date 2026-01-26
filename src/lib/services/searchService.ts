@@ -104,23 +104,29 @@ class SearchService {
         };
 
         try {
+            console.log(`[SEARCH_DEBUG] Starting smartSearch for: "${term}"`);
+
             // A. Identity Search (Customers & Barbers by Email/Phone/Name)
             // We use >= and <= term + '\uf8ff' for prefix search on specific fields
 
             // CUSTOMERS
+            console.log("[SEARCH_DEBUG] Executing customer queries...");
             const qCustEmail = query(collection(db, "customers"), where("email", ">=", term), where("email", "<=", term + '\uf8ff'), limit(3));
             const qCustName = query(collection(db, "customers"), where("displayName", ">=", term), where("displayName", "<=", term + '\uf8ff'), limit(3));
 
             // BARBERS
+            console.log("[SEARCH_DEBUG] Executing barber_applications queries...");
             const qBarbEmail = query(collection(db, "barber_applications"), where("email", ">=", term), where("email", "<=", term + '\uf8ff'), limit(3));
             const qBarbName = query(collection(db, "barber_applications"), where("name", ">=", term), where("name", "<=", term + '\uf8ff'), limit(3));
 
             const [custEmailSnap, custNameSnap, barbEmailSnap, barbNameSnap] = await Promise.all([
-                getDocs(qCustEmail),
-                getDocs(qCustName),
-                getDocs(qBarbEmail),
-                getDocs(qBarbName)
+                getDocs(qCustEmail).catch(e => { console.error("[SEARCH_DEBUG] qCustEmail FAIL:", e.message); throw e; }),
+                getDocs(qCustName).catch(e => { console.error("[SEARCH_DEBUG] qCustName FAIL:", e.message); throw e; }),
+                getDocs(qBarbEmail).catch(e => { console.error("[SEARCH_DEBUG] qBarbEmail FAIL:", e.message); throw e; }),
+                getDocs(qBarbName).catch(e => { console.error("[SEARCH_DEBUG] qBarbName FAIL:", e.message); throw e; })
             ]);
+
+            console.log(`[SEARCH_DEBUG] Results: custEmail(${custEmailSnap.size}), custName(${custNameSnap.size}), barbEmail(${barbEmailSnap.size}), barbName(${barbNameSnap.size})`);
 
             custEmailSnap.forEach(d => add({
                 id: d.id,
@@ -155,8 +161,12 @@ class SearchService {
             // B. Ticket/Dispute Search (If term "looks" like an ID, but Firestore partial ID search is hard)
             // Instead, we search 'reason' prefix
             // DISPUTES
+            console.log("[SEARCH_DEBUG] Executing dispute query...");
             const qDispute = query(collection(db, "disputes"), where("reason", ">=", term), where("reason", "<=", term + '\uf8ff'), limit(3));
-            const disputeSnap = await getDocs(qDispute);
+            const disputeSnap = await getDocs(qDispute).catch(e => { console.error("[SEARCH_DEBUG] qDispute FAIL:", e.message); throw e; });
+
+            console.log(`[SEARCH_DEBUG] Results: disputeSnap(${disputeSnap.size})`);
+
             disputeSnap.forEach(d => add({
                 id: d.id,
                 type: 'dispute',
@@ -165,8 +175,8 @@ class SearchService {
                 link: `/dashboard/disputes` // In real app, deep link to modal? For now just page.
             }));
 
-        } catch (e) {
-            console.error("Global search error:", e);
+        } catch (e: any) {
+            console.error("[SEARCH_DEBUG] Global search error:", e.message || e);
         }
 
         return Array.from(results.values());

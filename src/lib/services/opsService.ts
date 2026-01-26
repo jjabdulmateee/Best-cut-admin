@@ -9,7 +9,8 @@ import {
     Timestamp,
     setDoc,
     limit,
-    orderBy
+    orderBy,
+    serverTimestamp
 } from "firebase/firestore";
 import { Booking } from "../types/booking";
 import { SystemConfig } from "../types/config";
@@ -24,40 +25,42 @@ class OpsService {
             if (snap.exists()) {
                 onUpdate(snap.data() as SystemConfig);
             } else {
-                // Initialize if missing
-                const defaultConfig: SystemConfig = {
-                    onboardingEnabled: true,
-                    doorstepPlatformWide: true,
-                    maxDoorstepRadius: 10000,
+                // Initialize if missing with safe defaults (Strict: emergencyFreeze only)
+                const initData = {
                     emergencyFreeze: false,
-                    updatedAt: Timestamp.now(),
-                    updatedBy: "system"
+                    updatedAt: serverTimestamp()
                 };
-                void setDoc(configRef, defaultConfig);
-                onUpdate(defaultConfig);
+                void setDoc(configRef, initData);
+                onUpdate(initData as any as SystemConfig);
             }
         });
     }
 
     /**
-     * Updates global platform configuration via Cloud Function.
+     * Updates global platform configuration.
+     * All fields are updated directly in Firestore.
      */
     async updateConfig(adminId: string, updates: Partial<SystemConfig>) {
-        const functions = getFunctions();
-        const toggleFreeze = httpsCallable(functions, 'toggleEmergencyFreeze');
+        const configRef = doc(db, "platform", "config");
 
+        // Direct Firestore update for all config fields including emergencyFreeze
+        const { updatedBy: _, updatedAt: __, ...data } = updates;
+        await setDoc(configRef, {
+            ...data,
+            updatedAt: serverTimestamp(),
+            updatedBy: adminId
+        }, { merge: true });
+
+        // If emergencyFreeze changed, log it
         if ('emergencyFreeze' in updates) {
-            await toggleFreeze({
-                enabled: updates.emergencyFreeze,
-                reason: "Admin update from dashboard"
+            const logRef = doc(collection(db, "admin_logs"));
+            await setDoc(logRef, {
+                adminId,
+                action: updates.emergencyFreeze ? "SYSTEM_FREEZE_ACTIVATE" : "SYSTEM_FREEZE_DEACTIVATE",
+                reason: "Admin update from dashboard",
+                timestamp: serverTimestamp(),
+                severity: "CRITICAL"
             });
-        } else {
-            // High-level config update (fallback for other fields if needed)
-            const configRef = doc(db, "platform", "config");
-            const { updatedBy: _, updatedAt: __, ...data } = updates;
-            // Note: firestore.rules will now block this if not careful, 
-            // but for now we focus on the main authority migration.
-            console.warn("Direct config update attempted. Phase 1 prefers Cloud Functions.");
         }
     }
 

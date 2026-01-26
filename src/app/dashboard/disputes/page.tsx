@@ -8,21 +8,21 @@ import {
     Scale,
     AlertCircle,
     Clock,
-    Users,
     ChevronRight,
     ShieldAlert,
     CheckCircle2,
     DollarSign,
     ExternalLink,
-    LifeBuoy
+    LifeBuoy,
+    User,
+    Lock
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { securityService } from '@/lib/services/securityService';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { auth } from '@/lib/firebase/config';
-import { Cpu } from 'lucide-react';
 import { useAdminMode } from '@/context/AdminModeContext';
 
 export default function DisputesPage() {
@@ -30,18 +30,23 @@ export default function DisputesPage() {
     const [disputes, setDisputes] = useState<Dispute[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
+
+    // Resolution Form State
     const [refundAmount, setRefundAmount] = useState("");
     const [barberPayout, setBarberPayout] = useState("");
     const [resolutionNote, setResolutionNote] = useState("");
+
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedBooking, setSelectedBooking] = useState<any>(null);
 
+    // Safety Confirmation Modal State
+    const [showConfirmation, setShowConfirmation] = useState(false);
+
     useEffect(() => {
         setLoading(true);
-        // Filter disputes based on active mode
-        // Customer Mode -> Shows tickets created by Customers (Support Tickets)
-        // Barber Mode -> Shows tickets created by Barbers (Partner Disputes)
+        // Customer Mode -> Support Tickets
+        // Barber Mode -> Partner Disputes
         const targetReporter = mode === 'customer' ? 'customer' : 'barber';
 
         const q = query(
@@ -56,18 +61,33 @@ export default function DisputesPage() {
             setError(null);
         }, (err) => {
             console.error("Disputes subscription error:", err);
-            // Fallback for missing index if necessary, but ideally we show error
             setError(err.message);
             setLoading(false);
         });
         return () => unsubscribe();
     }, [mode]);
 
-    const handleResolve = async () => {
+    // Reset form when selection changes
+    useEffect(() => {
+        if (selectedDispute) {
+            setRefundAmount("");
+            setBarberPayout("");
+            setResolutionNote("");
+            setShowConfirmation(false);
+        }
+    }, [selectedDispute]);
+
+    const handleResolveClick = () => {
         if (!selectedDispute || !resolutionNote) {
             toast.error("Resolution note is required");
             return;
         }
+        setShowConfirmation(true);
+    };
+
+    const executeResolution = async () => {
+        if (!selectedDispute) return;
+
         setProcessing(true);
         try {
             await securityService.resolveDispute({
@@ -76,13 +96,12 @@ export default function DisputesPage() {
                 refundAmount: parseFloat(refundAmount) || 0,
                 barberPayout: parseFloat(barberPayout) || 0
             });
-            toast.success("Case resolved and funds distributed");
-            setSelectedDispute(null);
-            setResolutionNote("");
-            setRefundAmount("");
-            setBarberPayout("");
+            toast.success("Case resolved successfully. Funds distributed.");
+            setShowConfirmation(false);
+            // Optionally clear selection or keep it to show updated status (Snapshot will update it)
         } catch (error) {
-            toast.error("Failed to resolve case");
+            console.error(error);
+            toast.error("Failed to execute resolution. Check console.");
         } finally {
             setProcessing(false);
         }
@@ -90,20 +109,18 @@ export default function DisputesPage() {
 
     const getStatusStyle = (status: Dispute['status']) => {
         switch (status) {
-            case 'open': return 'bg-danger/10 text-danger border-danger/20';
-            case 'under_review': return 'bg-warning/10 text-warning border-warning/20';
-            case 'resolved': return 'bg-success/10 text-success border-success/20';
+            case 'open': return 'bg-red-500/10 text-red-500 border-red-500/20';
+            case 'under_review': return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+            case 'resolved': return 'bg-green-500/10 text-green-500 border-green-500/20';
             default: return 'bg-muted text-muted-foreground border-border';
         }
     };
 
     const isCustomerMode = mode === 'customer';
-    const mainColor = isCustomerMode ? 'text-indigo-500' : 'text-danger';
-    const bgColor = isCustomerMode ? 'bg-indigo-500' : 'bg-danger';
-    const borderColor = isCustomerMode ? 'border-indigo-500' : 'border-danger';
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 min-h-screen">
+            {/* Header / Nav */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-3 mb-1">
@@ -114,10 +131,6 @@ export default function DisputesPage() {
                             {isCustomerMode ? 'Customer Support Tickets' : 'Partner Dispute Resolution'}
                         </h1>
                     </div>
-                    <p className="text-sm text-muted-foreground font-medium flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full animate-pulse ${isCustomerMode ? 'bg-indigo-400' : 'bg-red-500'}`} />
-                        {isCustomerMode ? 'Help Desk & Refund Requests' : 'Official Platform Arbitration'}
-                    </p>
                 </div>
 
                 <div className="flex items-center gap-4">
@@ -127,7 +140,7 @@ export default function DisputesPage() {
                         <Link href="/dashboard/map" className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">Map HQ</Link>
                         <Link href="/dashboard/ops" className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">Ops Center</Link>
                         <Link href="/dashboard/trust" className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">Trust HQ</Link>
-                        <Link href="/dashboard/disputes" className={`px-4 py-2 text-xs font-bold uppercase tracking-widest hover:text-foreground transition-colors ${isCustomerMode ? 'text-foreground bg-muted rounded-lg shadow-sm' : 'text-foreground bg-muted rounded-lg shadow-sm'}`}>Litigation</Link>
+                        <Link href="/dashboard/disputes" className={`px-4 py-2 text-xs font-bold uppercase tracking-widest hover:text-foreground transition-colors text-foreground bg-muted rounded-lg shadow-sm`}>Litigation</Link>
                         <Link href="/dashboard/analytics" className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">Analytics</Link>
                     </nav>
                     <ThemeToggle />
@@ -135,50 +148,22 @@ export default function DisputesPage() {
             </div>
 
             {error ? (
-                <div className="rounded-3xl border border-border bg-card p-12 space-y-8 shadow-2xl relative overflow-hidden group max-w-5xl mx-auto text-center">
-                    <div className="absolute -top-12 -right-12 p-32 bg-danger/5 rounded-full blur-3xl group-hover:bg-danger/10 transition-colors" />
-                    <div className="relative z-10 flex flex-col items-center gap-4">
-                        <div className="p-4 bg-danger/20 rounded-2xl text-danger border border-danger/20">
-                            <Scale size={32} className="animate-pulse" />
-                        </div>
-                        <div>
-                            <h3 className="text-2xl font-black uppercase tracking-widest text-foreground">Litigation Engine Locked</h3>
-                            <p className="text-muted-foreground text-sm uppercase tracking-wider font-bold opacity-50">Authorized Personnel Only</p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center relative z-10 text-left">
-                        <div className="space-y-6">
-                            <p className="text-sm text-muted-foreground leading-relaxed italic">
-                                The platform arbitration layer handles sensitive escrow movements. Access is restricted to accounts with a verified <span className="text-foreground font-bold">\"Admin\"</span> signature in the system core.
-                            </p>
-                            <div className="bg-background/50 p-6 rounded-2xl border border-border font-mono text-xs break-all shadow-inner group">
-                                <span className="text-muted-foreground block mb-2 uppercase tracking-widest font-bold text-[9px]">Identity Signature:</span>
-                                <span className="text-success select-all text-xs font-bold">{auth.currentUser?.uid || "SIGNATURE_MISSING"}</span>
-                            </div>
-                        </div>
-
-                        <div className="bg-muted/30 p-8 rounded-2xl border border-border space-y-4">
-                            <p className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-4 decoration-danger underline">Authorization Protocol</p>
-                            {[
-                                "Open Firebase Console",
-                                "Target Collection: 'admins'",
-                                "Create Document ID: [Signature Left]",
-                                "Append Field: 'email' = (Your Email)"
-                            ].map((step, idx) => (
-                                <div key={idx} className="flex items-center gap-4 text-xs font-bold text-foreground">
-                                    <span className="w-6 h-6 flex items-center justify-center rounded bg-danger/20 text-danger text-[10px]">{idx + 1}</span>
-                                    {step}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                <div className="text-center p-12 bg-red-500/5 border border-red-500/20 rounded-2xl">
+                    <ShieldAlert className="mx-auto text-red-500 mb-4" size={48} />
+                    <h3 className="text-xl font-bold text-red-500 mb-2">Access Denied</h3>
+                    <p className="text-muted-foreground mb-4">You do not have permission to view litigation records.</p>
+                    <div className="font-mono text-xs text-muted-foreground">Admin Signature: {auth.currentUser?.uid}</div>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left: Dispute List */}
-                    <div className="lg:col-span-1 space-y-4">
-                        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-2">Active Cases</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+                    {/* LEFT COLUMN: DISPUTE LIST (Simplified Admin View) */}
+                    <div className="lg:col-span-4 space-y-4">
+                        <div className="flex items-center justify-between px-2">
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Active Docket</h3>
+                            <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-mono">{disputes.length} CASES</span>
+                        </div>
+
                         {loading ? (
                             <div className="p-12 text-center opacity-30">
                                 <Clock className="mx-auto mb-2 animate-spin" size={24} />
@@ -186,159 +171,256 @@ export default function DisputesPage() {
                         ) : disputes.length === 0 ? (
                             <div className="p-12 text-center bg-card rounded-2xl border border-dashed border-border opacity-50">
                                 <CheckCircle2 className="mx-auto mb-2 text-success" size={24} />
-                                <p className="text-xs font-bold uppercase tracking-widest">Docket Clear</p>
+                                <p className="text-xs font-bold uppercase tracking-widest">No Active Disputes</p>
                             </div>
                         ) : (
-                            <div className="space-y-3">
-                                {disputes.map(dispute => (
-                                    <button
-                                        key={dispute.id}
-                                        onClick={async () => {
-                                            setSelectedDispute(dispute);
-                                            // Fetch booking details
-                                            const bookingRef = doc(db, "bookings", dispute.bookingId);
-                                            const bookingSnap = await getDoc(bookingRef);
-                                            if (bookingSnap.exists()) {
-                                                setSelectedBooking(bookingSnap.data());
-                                            } else {
-                                                setSelectedBooking(null);
-                                            }
-                                        }}
-                                        className={`w-full text-left p-4 rounded-xl border transition-all ${selectedDispute?.id === dispute.id
-                                            ? 'bg-brand-500/10 border-brand-500 shadow-lg shadow-brand-500/5'
-                                            : 'bg-card border-border hover:border-brand-500/50'
-                                            }`}
-                                    >
-                                        <div className="flex justify-between items-start mb-2">
-                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tighter border ${getStatusStyle(dispute.status)}`}>
-                                                {dispute.status.replace('_', ' ')}
-                                            </span>
-                                            <span className="text-[10px] text-muted-foreground">
-                                                {formatDistanceToNow(dispute.createdAt.toDate())} ago
-                                            </span>
-                                        </div>
-                                        <h4 className="text-sm font-bold mb-1 line-clamp-1">{dispute.reason}</h4>
-                                        <p className="text-[10px] text-muted-foreground line-clamp-2">{dispute.details}</p>
-                                        <div className="mt-3 flex items-center justify-between">
-                                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono">
-                                                <AlertCircle size={10} />
-                                                #{dispute.bookingId.slice(-6).toUpperCase()}
+                            <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
+                                {disputes.map(dispute => {
+                                    const isActive = selectedDispute?.id === dispute.id;
+                                    return (
+                                        <button
+                                            key={dispute.id}
+                                            onClick={async () => {
+                                                setSelectedDispute(dispute);
+                                                // Lazy fetch booking details on selection
+                                                const bookingRef = doc(db, "bookings", dispute.bookingId);
+                                                const bookingSnap = await getDoc(bookingRef);
+                                                setSelectedBooking(bookingSnap.exists() ? bookingSnap.data() : null);
+                                            }}
+                                            className={`w-full text-left p-4 rounded-xl border transition-all group ${isActive
+                                                    ? 'bg-brand-500/10 border-brand-500 shadow-md relative overflow-hidden'
+                                                    : 'bg-card border-border hover:border-brand-500/50 hover:bg-muted/30'
+                                                }`}
+                                        >
+                                            {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-500" />}
+
+                                            {/* Row 1: Who vs Complainant and Status */}
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`p-1.5 rounded-md ${dispute.reporterType === 'customer' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-orange-500/20 text-orange-400'}`}>
+                                                        <User size={12} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-foreground capitalize">
+                                                            {dispute.reporterType}
+                                                        </p>
+                                                        <p className="text-[10px] text-muted-foreground font-mono">
+                                                            Complaint Filed
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${getStatusStyle(dispute.status)}`}>
+                                                    {dispute.status.replace('_', ' ')}
+                                                </span>
                                             </div>
-                                            <ChevronRight size={14} className="text-muted-foreground" />
-                                        </div>
-                                    </button>
-                                ))}
+
+                                            {/* Row 2: Booking ID & Date */}
+                                            <div className="flex items-center justify-between mt-3 pl-1">
+                                                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono">
+                                                    <span className="opacity-50">ID:</span>
+                                                    <span className="text-foreground tracking-wider font-bold">#{dispute.bookingId.slice(-6).toUpperCase()}</span>
+                                                </div>
+                                                <span className="text-[10px] text-muted-foreground font-medium">
+                                                    {format(dispute.createdAt.toDate(), 'MMM d')}
+                                                </span>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
 
-                    {/* Right: Case Detail & Action */}
-                    <div className="lg:col-span-2">
+                    {/* RIGHT COLUMN: DETAIL VIEW & ACTION FLOW */}
+                    <div className="lg:col-span-8">
                         {selectedDispute ? (
-                            <div className="bg-card border border-border rounded-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                {/* Header */}
-                                <div className="p-6 border-b border-border bg-muted/30">
-                                    <div className="flex justify-between items-start">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2 text-danger">
-                                                <ShieldAlert size={18} />
-                                                <h2 className="text-lg font-bold">Case Review: {selectedDispute.id}</h2>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground">Official Platform Litigation</p>
+                            <div className="bg-card border border-border rounded-2xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+
+                                {/* 1. CONTEXT HEADER */}
+                                <div className="p-6 border-b border-border bg-muted/30 flex justify-between items-start">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <ShieldAlert className="text-danger" size={20} />
+                                            <h2 className="text-xl font-bold tracking-tight text-foreground">Dispute Resolution</h2>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button className="p-2 border border-border rounded-lg bg-background hover:bg-muted transition-colors" title="View Trip">
-                                                <ExternalLink size={16} />
-                                            </button>
+                                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                            <span>Case ID: <span className="font-mono text-foreground">{selectedDispute.id}</span></span>
+                                            <span>•</span>
+                                            <span>Created {formatDistanceToNow(selectedDispute.createdAt.toDate())} ago</span>
                                         </div>
                                     </div>
+                                    <Link href={`/dashboard`} className="p-2 border border-border rounded-lg hover:bg-background transition-colors" title="View Full Booking Details">
+                                        <ExternalLink size={16} />
+                                    </Link>
                                 </div>
 
-                                {/* Evidence */}
-                                <div className="p-6 space-y-8">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="p-4 rounded-xl border border-border bg-background">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Reporter</p>
-                                            <p className="text-sm font-bold">{selectedDispute.reporterType.toUpperCase()}</p>
-                                            <p className="text-[10px] font-mono opacity-50">{selectedDispute.reporterId}</p>
+                                <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-12">
+                                    {/* 2. EVIDENCE SECTION */}
+                                    <div className="space-y-6">
+                                        <div>
+                                            <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+                                                <AlertCircle size={14} /> The Complaint
+                                            </h4>
+                                            <div className="bg-muted/30 p-5 rounded-xl border border-border">
+                                                <p className="font-bold text-foreground text-sm mb-2">{selectedDispute.reason}</p>
+                                                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                                                    "{selectedDispute.details}"
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div className="p-4 rounded-xl border border-border bg-background">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Target</p>
-                                            <p className="text-sm font-bold">{selectedDispute.reporterType === 'customer' ? 'BARBER' : 'CUSTOMER'}</p>
-                                            <p className="text-[10px] font-mono opacity-50">{selectedDispute.targetId}</p>
+
+                                        <div className="bg-background border border-border p-4 rounded-xl flex items-center justify-between">
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Booking Total</p>
+                                                <p className="text-lg font-mono font-bold text-foreground">
+                                                    ${selectedBooking?.totalPrice?.toLocaleString() || "..."}
+                                                </p>
+                                            </div>
+                                            <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase border ${selectedDispute.status === 'resolved' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
+                                                {selectedDispute.status === 'resolved' ? 'FUNDS SETTLED' : 'FUNDS LOCKED'}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="space-y-3">
-                                        <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Statement of Claim</h4>
-                                        <div className="p-4 rounded-xl border border-border bg-muted/20 text-sm leading-relaxed whitespace-pre-wrap">
-                                            {selectedDispute.details}
-                                        </div>
-                                    </div>
+                                    {/* 3. RESOLUTION / ACTION FLOW */}
+                                    <div className="space-y-6">
+                                        <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+                                            <Scale size={14} />
+                                            {selectedDispute.status === 'resolved' ? 'Settlement Record' : 'Admin Action'}
+                                        </h4>
 
-                                    {/* Financial Snapshot */}
-                                    <div className="p-6 rounded-2xl border border-brand-500/20 bg-brand-500/5 space-y-4">
-                                        <div className="flex items-center gap-2 text-brand-400">
-                                            <DollarSign size={18} />
-                                            <h4 className="text-sm font-bold uppercase">Escrow Status</h4>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs text-muted-foreground">Original Trip Value</span>
-                                            <span className="text-lg font-mono font-bold">
-                                                ${selectedBooking?.totalPrice?.toLocaleString() || "—"}
-                                            </span>
-                                        </div>
-                                        <div className="h-px bg-border" />
-                                        <div className="space-y-4">
-                                            <p className="text-xs font-bold text-muted-foreground uppercase">Propose Resolution</p>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] font-bold uppercase ml-1">Refund Customer</label>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={refundAmount}
-                                                        onChange={(e) => setRefundAmount(e.target.value)}
-                                                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:border-brand-500 outline-none transition-colors"
-                                                        placeholder="0.00"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] font-bold uppercase ml-1">Payout Barber</label>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={barberPayout}
-                                                        onChange={(e) => setBarberPayout(e.target.value)}
-                                                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:border-brand-500 outline-none transition-colors"
-                                                        placeholder="0.00"
-                                                    />
+                                        {selectedDispute.status === 'resolved' ? (
+                                            // READ ONLY VIEW FOR RESOLVED CASES
+                                            <div className="space-y-4 opacity-75">
+                                                <div className="bg-green-500/5 border border-green-500/20 p-5 rounded-xl space-y-4">
+                                                    <div className="flex items-center gap-2 text-green-500 mb-2">
+                                                        <CheckCircle2 size={18} />
+                                                        <span className="font-bold text-sm uppercase">Case Closed</span>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                                        <div>
+                                                            <span className="block text-[10px] uppercase text-muted-foreground font-bold">Refunded to Customer</span>
+                                                            <span className="font-mono font-bold text-foreground">${selectedDispute.refundAmount || 0}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="block text-[10px] uppercase text-muted-foreground font-bold">Paid to Barber</span>
+                                                            <span className="font-mono font-bold text-foreground">${selectedDispute.barberPayout || 0}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="pt-4 border-t border-green-500/10">
+                                                        <span className="block text-[10px] uppercase text-muted-foreground font-bold mb-1">Resolution Note</span>
+                                                        <p className="text-sm italic text-foreground">"{selectedDispute.resolutionNote}"</p>
+                                                    </div>
+
+                                                    <div className="text-[10px] text-green-600/60 font-mono mt-2">
+                                                        Closed by Admin {selectedDispute.resolvedBy} on {selectedDispute.resolvedAt ? format(selectedDispute.resolvedAt.toDate(), 'MMM d, yyyy HH:mm') : 'Unknown'}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <textarea
-                                                value={resolutionNote}
-                                                onChange={(e) => setResolutionNote(e.target.value)}
-                                                className="w-full h-24 bg-background border border-border rounded-xl p-3 text-sm focus:border-brand-500 outline-none transition-colors resize-none"
-                                                placeholder="Resolution justification... (Mandatory for Audit)"
-                                            ></textarea>
-                                            <button
-                                                onClick={handleResolve}
-                                                disabled={processing}
-                                                className="w-full py-3 bg-brand-500 text-black font-bold rounded-xl hover:bg-brand-400 active:scale-95 transition-all disabled:opacity-50"
-                                            >
-                                                {processing ? "Executing..." : "EXECUTE SETTLEMENT"}
-                                            </button>
-                                        </div>
+                                        ) : (
+                                            // EDITABLE ACTION FORM FOR OPEN CASES
+                                            <div className="bg-brand-500/5 border border-brand-500/20 p-6 rounded-2xl space-y-5">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-bold uppercase text-brand-300">Refund Customer ($)</label>
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={refundAmount}
+                                                            onChange={e => setRefundAmount(e.target.value)}
+                                                            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none font-mono"
+                                                            placeholder="0.00"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-bold uppercase text-brand-300">Payout Barber ($)</label>
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={barberPayout}
+                                                            onChange={e => setBarberPayout(e.target.value)}
+                                                            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none font-mono"
+                                                            placeholder="0.00"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-bold uppercase text-brand-300">Resolution Note</label>
+                                                    <textarea
+                                                        value={resolutionNote}
+                                                        onChange={e => setResolutionNote(e.target.value)}
+                                                        className="w-full h-24 bg-background border border-border rounded-lg p-3 text-sm focus:ring-2 focus:ring-brand-500 outline-none resize-none placeholder:text-muted-foreground/50"
+                                                        placeholder="Explain your decision. This note will be visible in the final record except for admin-internal details..."
+                                                    />
+                                                </div>
+
+                                                <button
+                                                    onClick={handleResolveClick}
+                                                    className="w-full py-3 bg-brand-500 hover:bg-brand-400 text-black font-bold rounded-xl transition-all shadow-lg shadow-brand-500/20 active:translate-y-0.5"
+                                                >
+                                                    Review & Execute Settlement
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                         ) : (
-                            <div className="h-[600px] flex flex-col items-center justify-center text-center opacity-20 select-none">
-                                <Scale size={64} className="mb-4" />
-                                <h2 className="text-2xl font-bold uppercase tracking-widest">Awaiting Case Selection</h2>
-                                <p className="max-w-xs mt-2 text-xs font-bold uppercase tracking-wider">Select a dispute from the deck to begin official arbitration.</p>
+                            <div className="h-[calc(100vh-200px)] flex flex-col items-center justify-center text-center opacity-30 select-none border-2 border-dashed border-border rounded-3xl">
+                                <Scale size={48} className="mb-4 text-muted-foreground" />
+                                <h2 className="text-xl font-bold uppercase tracking-widest text-foreground">Awaiting Selection</h2>
+                                <p className="text-sm mt-2 max-w-xs mx-auto">Select an active dispute from the docket to review evidence and issue a ruling.</p>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* SAFETY CONFIRMATION MODAL */}
+            {showConfirmation && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-6">
+                        <div className="flex items-center gap-3 text-brand-500 mb-2">
+                            <ShieldAlert size={28} />
+                            <h3 className="text-xl font-bold uppercase tracking-wide">Confirm Settlement</h3>
+                        </div>
+
+                        <div className="space-y-4 bg-muted/30 p-4 rounded-xl">
+                            <p className="text-sm text-foreground">You are about to execute the following irrevocable actions:</p>
+                            <ul className="space-y-2 text-sm font-mono text-muted-foreground">
+                                <li className="flex justify-between">
+                                    <span>Refund Customer:</span>
+                                    <span className="font-bold text-foreground">${parseFloat(refundAmount || '0').toFixed(2)}</span>
+                                </li>
+                                <li className="flex justify-between">
+                                    <span>Payout Barber:</span>
+                                    <span className="font-bold text-foreground">${parseFloat(barberPayout || '0').toFixed(2)}</span>
+                                </li>
+                                <li className="flex justify-between pt-2 border-t border-border mt-2">
+                                    <span>Total Movement:</span>
+                                    <span className="font-bold text-brand-500">${(parseFloat(refundAmount || '0') + parseFloat(barberPayout || '0')).toFixed(2)}</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowConfirmation(false)}
+                                className="flex-1 py-3 rounded-xl border border-border font-bold hover:bg-muted transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={executeResolution}
+                                disabled={processing}
+                                className="flex-1 py-3 rounded-xl bg-brand-500 text-black font-bold hover:bg-brand-400 transition-colors shadow-lg shadow-brand-500/20"
+                            >
+                                {processing ? 'Executing...' : 'CONFIRM EXECUTION'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
