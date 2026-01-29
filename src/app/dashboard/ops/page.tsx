@@ -25,6 +25,7 @@ import { BarberActivityMonitor } from "@/components/Ops/BarberActivityMonitor";
 import { AuditCenter } from "@/components/Ops/AuditCenter";
 import { NotificationCenter } from "@/components/Ops/NotificationCenter";
 import { riskService } from "@/lib/services/riskService";
+import { BookingSimulator } from "@/components/Ops/BookingSimulator";
 
 export default function OpsDashboard() {
     const { mode } = useAdminMode(); // 1. Get Mode
@@ -192,13 +193,7 @@ export default function OpsDashboard() {
                             </div>
                         )}
 
-                        <div className="bg-card border border-border rounded-2xl p-6 h-[400px] flex flex-col justify-center text-center">
-                            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground">
-                                <Activity size={32} />
-                            </div>
-                            <h4 className="font-bold text-foreground uppercase tracking-widest text-xs">Network Analysis</h4>
-                            <p className="text-[10px] text-muted-foreground max-w-xs mx-auto mt-2">Aggregating platform latency, API success rates, and service uptime across nodes.</p>
-                        </div>
+                        <BookingSimulator />
                     </div>
 
                     <AuditCenter />

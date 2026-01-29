@@ -15,8 +15,13 @@ export interface Dispute {
     resolvedAt?: Timestamp;
     resolvedBy?: string; // Admin UID
     resolutionNote?: string;
-    refundAmount?: number;
-    barberPayout?: number;
+
+    // Escrow validation fields (Phase 1 - Money Safety)
+    refundPercentage?: number;    // Admin's selected percentage (100, 90, 80, 50, 0)
+    refundAmount?: number;         // Backend-calculated refund to customer
+    barberPayout?: number;         // Backend-calculated payout to barber
+    platformFee?: number;          // Backend-calculated platform fee
+    escrowedAmount?: number;       // Booking totalPrice at resolution time
 }
 
 export type TrustLevel = 'green' | 'yellow' | 'red';

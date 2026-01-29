@@ -26,7 +26,7 @@ export async function assertNotFrozen() {
  */
 export async function assertUserActive(uid: string) {
     const userSnap = await db.doc(`users/${uid}`).get();
-    if (userSnap.exists() && userSnap.data()?.isDisabled === true) {
+    if (userSnap.exists && userSnap.data()?.isDisabled === true) {
         throw new functions.https.HttpsError(
             "permission-denied",
             "This account has been disabled by an administrator."
@@ -39,7 +39,7 @@ export async function assertUserActive(uid: string) {
  */
 export async function assertBarberActive(uid: string) {
     const barberSnap = await db.doc(`barber_applications/${uid}`).get();
-    if (barberSnap.exists() && barberSnap.data()?.accountStatus === "disabled") {
+    if (barberSnap.exists && barberSnap.data()?.accountStatus === "disabled") {
         throw new functions.https.HttpsError(
             "permission-denied",
             "This barber account is currently disabled."
@@ -52,5 +52,5 @@ export async function assertBarberActive(uid: string) {
  */
 export async function isAdmin(uid: string) {
     const adminSnap = await db.doc(`admins/${uid}`).get();
-    return adminSnap.exists();
+    return adminSnap.exists;
 }

@@ -16,7 +16,9 @@ export interface Booking {
     customerName: string;
     status: BookingStatus;
     serviceType: 'shop' | 'doorstep';
+    serviceName: string; // Specific service requested (e.g. "Haircut", "Beard Trim")
     price: number;
+    totalPrice?: number; // Total including fees (used for escrow validation)
     createdAt: Timestamp;
     completedAt?: Timestamp;
     cancelledAt?: Timestamp;

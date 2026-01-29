@@ -1,6 +1,6 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import { db, isAdmin, assertNotFrozen } from "./shared";
+import { db, isAdmin } from "./shared";
 
 /**
  * Apply Strike (Admin Only)
@@ -15,7 +15,7 @@ export const applyStrike = functions.https.onCall(async (data, context) => {
     return db.runTransaction(async (transaction) => {
         const ref = targetType === 'barber' ? db.doc(`barber_applications/${targetId}`) : db.doc(`users/${targetId}`);
         const snap = await transaction.get(ref);
-        if (!snap.exists()) throw new functions.https.HttpsError("not-found", "Entity not found.");
+        if (!snap.exists) throw new functions.https.HttpsError("not-found", "Entity not found.");
 
         const currentStrikes = snap.data()?.strikeCount || 0;
         const newStrikeCount = currentStrikes + 1;
@@ -68,7 +68,7 @@ export const issuePenalty = functions.https.onCall(async (data, context) => {
     return db.runTransaction(async (transaction) => {
         const walletRef = db.doc(`wallets/${targetId}`);
         const walletSnap = await transaction.get(walletRef);
-        if (!walletSnap.exists()) throw new functions.https.HttpsError("not-found", "Wallet not found.");
+        if (!walletSnap.exists) throw new functions.https.HttpsError("not-found", "Wallet not found.");
 
         transaction.update(walletRef, {
             balance: admin.firestore.FieldValue.increment(-amount),

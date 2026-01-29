@@ -1,0 +1,19 @@
+{
+    "indexes": [
+        {
+            "collectionGroup": "disputes",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "reporterType",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        }
+    ],
+    "fieldOverrides": []
+}

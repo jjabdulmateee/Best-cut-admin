@@ -28,13 +28,14 @@ class SecurityService {
     }
 
     /**
-     * Resolve an official dispute
+     * Resolve an official dispute (Uber-level escrow validation)
+     * Admin sends ONLY refundPercentage (100, 90, 80, 50, 0)
+     * Backend calculates all amounts and enforces conservation
      */
     async resolveDispute(params: {
         disputeId: string;
         resolution: string;
-        refundAmount: number;
-        barberPayout: number;
+        refundPercentage: number; // Must be one of: 100, 90, 80, 50, 0
     }) {
         const resolveDisputeFn = httpsCallable(functions, 'resolveDispute');
         return resolveDisputeFn(params);

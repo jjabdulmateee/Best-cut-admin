@@ -1,18 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut, LayoutDashboard, Search } from "lucide-react";
+import { LogOut, LayoutDashboard, Search, ArrowLeft } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdminModeToggle } from "@/components/Layout/AdminModeToggle";
 import { GlobalSearchModal } from "@/components/Search/GlobalSearchModal";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function DashboardHeader() {
     const router = useRouter();
+    const pathname = usePathname();
     const { signOut, user: authUser } = useAuth();
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+    const isRootDashboard = pathname === "/dashboard";
 
     const handleSignOut = async () => {
         try {
@@ -28,11 +32,31 @@ export function DashboardHeader() {
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-border pb-6 mb-8">
                 {/* Branding & Mode Switch */}
                 <div className="flex items-center gap-6">
+                    <AnimatePresence mode="wait">
+                        {!isRootDashboard && (
+                            <motion.button
+                                initial={{ opacity: 0, x: -20, scale: 0.8 }}
+                                animate={{ opacity: 1, x: 0, scale: 1 }}
+                                exit={{ opacity: 0, x: -20, scale: 0.8 }}
+                                whileHover={{ scale: 1.1, x: -2 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => router.back()}
+                                className="p-3 rounded-2xl bg-card border border-border hover:border-brand-500/50 hover:bg-brand-500/5 text-muted-foreground hover:text-brand-500 transition-colors shadow-sm cursor-pointer group flex items-center justify-center"
+                                title="Go Back"
+                            >
+                                <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+                            </motion.button>
+                        )}
+                    </AnimatePresence>
+
                     <div>
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-brand-600 rounded-lg text-white">
+                            <motion.div
+                                whileHover={{ rotate: 15, scale: 1.1 }}
+                                className="p-2 bg-brand-600 rounded-lg text-white"
+                            >
                                 <LayoutDashboard size={20} />
-                            </div>
+                            </motion.div>
                             <h1 className="text-2xl font-black tracking-tighter text-foreground uppercase italic">Best Cut Admin</h1>
                         </div>
                     </div>

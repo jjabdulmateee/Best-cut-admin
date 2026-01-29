@@ -6,6 +6,10 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { motion, AnimatePresence } from "framer-motion";
+import { ThemeToggle } from "@/components/Layout/DashboardHeader"; // Reusing the same toggle
+import { Mail, Lock, ShieldCheck, ChevronRight } from "lucide-react";
+import { ThemeToggle as StandaloneThemeToggle } from "@/components/ThemeToggle";
 
 export default function Home() {
   const router = useRouter();
@@ -42,79 +46,135 @@ export default function Home() {
   const showAccessDenied = user && !adminLoading && !isAdmin;
 
   return (
-    <div className="min-h-screen bg-brand-900 text-foreground flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-brand-800 border border-brand-700 rounded-2xl shadow-xl p-8 space-y-6">
-        <header className="space-y-2">
-          <p className="text-sm uppercase tracking-[0.2em] text-gray-400">
-            Best Cut Admin
-          </p>
-          <h1 className="text-2xl font-semibold">Sign in</h1>
-          <p className="text-sm text-gray-400">
-            Use your admin email and password to access the dashboard.
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4 relative overflow-hidden transition-colors duration-500">
+      {/* Dynamic Background Elements */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/10 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-brand-600/10 rounded-full blur-[120px] animate-pulse" />
+      </div>
+
+      {/* Theme Toggle Positioned Top Right */}
+      <div className="absolute top-8 right-8 z-50">
+        <StandaloneThemeToggle />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="w-full max-w-md bg-card border border-border rounded-[2.5rem] shadow-2xl p-10 space-y-8 relative z-10 backdrop-blur-xl"
+      >
+        <header className="space-y-4 text-center">
+          <motion.div
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            className="mx-auto w-16 h-16 rounded-2xl bg-brand-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/20 mb-6"
+          >
+            <ShieldCheck size={32} />
+          </motion.div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-500">
+              Best Cut Intelligence
+            </p>
+            <h1 className="text-3xl font-black italic tracking-tighter uppercase">Admin Portal</h1>
+          </div>
+          <p className="text-sm text-muted-foreground font-medium">
+            Enter your credentials to access the command center.
           </p>
         </header>
 
-        {(authLoading || adminLoading) && (
-          <div className="flex items-center gap-2 text-sm text-gray-300">
-            <LoadingSpinner />
-            <span>Checking your session…</span>
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {(authLoading || adminLoading) ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center py-8 space-y-4"
+            >
+              <LoadingSpinner />
+              <p className="text-xs font-bold uppercase tracking-widest animate-pulse text-muted-foreground">Synchronizing Session...</p>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="space-y-6"
+            >
+              {showAccessDenied && (
+                <div className="rounded-2xl border border-danger/20 bg-danger/5 text-danger text-xs font-bold p-4 text-center uppercase tracking-wider">
+                  Access Denied: Unrecognized Protocol
+                </div>
+              )}
 
-        {showAccessDenied && (
-          <div className="rounded-lg border border-danger/30 bg-danger/10 text-danger text-sm p-3">
-            Your account is not authorized for admin access.
-          </div>
-        )}
+              {(authError || adminError) && (
+                <div className="rounded-2xl border border-danger/20 bg-danger/5 text-danger text-xs font-bold p-4 text-center uppercase tracking-wider">
+                  {authError || adminError}
+                </div>
+              )}
 
-        {(authError || adminError) && (
-          <div className="rounded-lg border border-danger/30 bg-danger/10 text-danger text-sm p-3">
-            {authError || adminError}
-          </div>
-        )}
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-2 group">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Secure Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-brand-500 transition-colors" size={18} />
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full rounded-2xl bg-muted/50 border border-border px-11 py-3.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent placeholder:text-muted-foreground/50 transition-all"
+                      placeholder="name@bestcut.com"
+                      autoComplete="email"
+                    />
+                  </div>
+                </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm text-gray-300">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg bg-brand-700 border border-brand-600 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-success placeholder:text-gray-500"
-              placeholder="admin@bestcut.com"
-              autoComplete="email"
-            />
-          </div>
+                <div className="space-y-2 group">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-brand-500 transition-colors" size={18} />
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full rounded-2xl bg-muted/50 border border-border px-11 py-3.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent placeholder:text-muted-foreground/50 transition-all caret-brand-500"
+                      placeholder="••••••••"
+                      autoComplete="current-password"
+                      style={{ color: 'inherit' }} // Ensuring dots match theme foreground
+                    />
+                  </div>
+                </div>
 
-          <div className="space-y-2">
-            <label className="text-sm text-gray-300">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg bg-brand-700 border border-brand-600 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-success placeholder:text-gray-500"
-              placeholder="••••••••"
-              autoComplete="current-password"
-            />
-          </div>
+                <motion.button
+                  type="submit"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  disabled={submitting || authLoading || adminLoading}
+                  className="w-full rounded-2xl bg-foreground text-background font-black uppercase tracking-widest py-4 flex items-center justify-center gap-3 disabled:opacity-50 transition-all shadow-xl hover:shadow-brand-500/10"
+                >
+                  {submitting ? <LoadingSpinner /> : (
+                    <>
+                      <span>Unlock Dashboard</span>
+                      <ChevronRight size={18} />
+                    </>
+                  )}
+                </motion.button>
+              </form>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-          <button
-            type="submit"
-            disabled={submitting || authLoading || adminLoading}
-            className="w-full rounded-lg bg-success hover:bg-green-600 transition-colors text-black font-semibold py-2 flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            {submitting ? <LoadingSpinner /> : null}
-            <span>{submitting ? "Signing in..." : "Sign in"}</span>
-          </button>
-        </form>
-
-        <p className="text-xs text-gray-500">
-          Access is restricted to approved admins. Contact support if you need
-          help.
-        </p>
-      </div>
+        <footer className="text-center">
+          <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest leading-relaxed">
+            Authorized Personnel Only <br />
+            System Monitoring is Active
+          </p>
+        </footer>
+      </motion.div>
     </div>
   );
 }
+

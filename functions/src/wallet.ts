@@ -16,7 +16,7 @@ export const payFromWallet = functions.https.onCall(async (data, context) => {
         const walletRef = db.doc(`wallets/${context.auth!.uid}`);
         const walletSnap = await transaction.get(walletRef);
 
-        if (!walletSnap.exists()) throw new functions.https.HttpsError("not-found", "Wallet not found.");
+        if (!walletSnap.exists) throw new functions.https.HttpsError("not-found", "Wallet not found.");
         const balance = walletSnap.data()!.balance;
 
         if (balance < amount) throw new functions.https.HttpsError("failed-precondition", "Insufficient funds.");
@@ -56,7 +56,7 @@ export const refundToWallet = functions.https.onCall(async (data, context) => {
         const walletRef = db.doc(`wallets/${userId}`);
         const walletSnap = await transaction.get(walletRef);
 
-        if (!walletSnap.exists()) throw new functions.https.HttpsError("not-found", "User wallet not found.");
+        if (!walletSnap.exists) throw new functions.https.HttpsError("not-found", "User wallet not found.");
 
         transaction.update(walletRef, {
             balance: admin.firestore.FieldValue.increment(amount),
@@ -109,7 +109,7 @@ export const withdrawBarberFunds = functions.https.onCall(async (data, context) 
         const walletRef = db.doc(`wallets/${barberId}`);
         const walletSnap = await transaction.get(walletRef);
 
-        if (!walletSnap.exists()) throw new functions.https.HttpsError("not-found", "Wallet not found.");
+        if (!walletSnap.exists) throw new functions.https.HttpsError("not-found", "Wallet not found.");
         const balance = walletSnap.data()!.balance;
 
         if (balance < amount) throw new functions.https.HttpsError("failed-precondition", "Insufficient funds.");

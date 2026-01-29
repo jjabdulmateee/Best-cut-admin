@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { db } from "@/lib/firebase/config";
 import { collection, query, onSnapshot, orderBy, doc, getDoc, where } from "firebase/firestore";
 import { Dispute } from "@/lib/types/dispute";
+import { PlatformConfig, DEFAULT_PLATFORM_CONFIG } from "@/lib/types/platform";
 import {
     Scale,
     AlertCircle,
@@ -32,8 +33,8 @@ export default function DisputesPage() {
     const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
 
     // Resolution Form State
-    const [refundAmount, setRefundAmount] = useState("");
-    const [barberPayout, setBarberPayout] = useState("");
+    // Resolution Form State — PERCENTAGE-BASED ONLY
+    const [refundPercentage, setRefundPercentage] = useState<number>(100); // Default: full refund
     const [resolutionNote, setResolutionNote] = useState("");
 
     const [processing, setProcessing] = useState(false);
@@ -42,6 +43,27 @@ export default function DisputesPage() {
 
     // Safety Confirmation Modal State
     const [showConfirmation, setShowConfirmation] = useState(false);
+
+    // Platform Config State
+    const [platformConfig, setPlatformConfig] = useState<PlatformConfig>(DEFAULT_PLATFORM_CONFIG);
+
+    // Fetch Platform Config
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const ref = doc(db, 'platform', 'config');
+                const snap = await getDoc(ref);
+                if (snap.exists()) {
+                    const data = snap.data() as PlatformConfig;
+                    setPlatformConfig(data);
+                    console.log("🛡️ Admin Money Safety: Platform config loaded successfully", data);
+                }
+            } catch (err) {
+                console.error("Failed to fetch platform config", err);
+            }
+        };
+        fetchConfig();
+    }, []);
 
     useEffect(() => {
         setLoading(true);
@@ -70,8 +92,7 @@ export default function DisputesPage() {
     // Reset form when selection changes
     useEffect(() => {
         if (selectedDispute) {
-            setRefundAmount("");
-            setBarberPayout("");
+            setRefundPercentage(100);
             setResolutionNote("");
             setShowConfirmation(false);
         }
@@ -85,6 +106,25 @@ export default function DisputesPage() {
         setShowConfirmation(true);
     };
 
+    // Calculated preview (read-only, for admin visibility)
+    const calculateDistribution = (percentage: number) => {
+        if (!selectedBooking?.totalPrice && !selectedBooking?.price) return null;
+        const totalPrice = selectedBooking.totalPrice || selectedBooking.price;
+        const platformFeePercent = platformConfig.platformFeePercent;
+
+        const refund = Math.round((totalPrice * percentage) / 100 * 100) / 100;
+        const remaining = totalPrice - refund;
+        // Platform fee is 0 if full refund, otherwise apply platform fee
+        const platformFee = percentage === 100
+            ? 0
+            : Math.round((remaining * platformFeePercent) / 100 * 100) / 100;
+        const barberPayout = Math.round((remaining - platformFee) * 100) / 100;
+
+        return { refund, barberPayout, platformFee, totalPrice };
+    };
+
+    const distribution = calculateDistribution(refundPercentage);
+
     const executeResolution = async () => {
         if (!selectedDispute) return;
 
@@ -93,8 +133,7 @@ export default function DisputesPage() {
             await securityService.resolveDispute({
                 disputeId: selectedDispute.id,
                 resolution: resolutionNote,
-                refundAmount: parseFloat(refundAmount) || 0,
-                barberPayout: parseFloat(barberPayout) || 0
+                refundPercentage: refundPercentage // ONLY send percentage
             });
             toast.success("Case resolved successfully. Funds distributed.");
             setShowConfirmation(false);
@@ -188,8 +227,8 @@ export default function DisputesPage() {
                                                 setSelectedBooking(bookingSnap.exists() ? bookingSnap.data() : null);
                                             }}
                                             className={`w-full text-left p-4 rounded-xl border transition-all group ${isActive
-                                                    ? 'bg-brand-500/10 border-brand-500 shadow-md relative overflow-hidden'
-                                                    : 'bg-card border-border hover:border-brand-500/50 hover:bg-muted/30'
+                                                ? 'bg-brand-500/10 border-brand-500 shadow-md relative overflow-hidden'
+                                                : 'bg-card border-border hover:border-brand-500/50 hover:bg-muted/30'
                                                 }`}
                                         >
                                             {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-500" />}
@@ -322,30 +361,58 @@ export default function DisputesPage() {
                                         ) : (
                                             // EDITABLE ACTION FORM FOR OPEN CASES
                                             <div className="bg-brand-500/5 border border-brand-500/20 p-6 rounded-2xl space-y-5">
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-bold uppercase text-brand-300">Refund Customer ($)</label>
-                                                        <input
-                                                            type="number"
-                                                            step="0.01"
-                                                            value={refundAmount}
-                                                            onChange={e => setRefundAmount(e.target.value)}
-                                                            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none font-mono"
-                                                            placeholder="0.00"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-bold uppercase text-brand-300">Payout Barber ($)</label>
-                                                        <input
-                                                            type="number"
-                                                            step="0.01"
-                                                            value={barberPayout}
-                                                            onChange={e => setBarberPayout(e.target.value)}
-                                                            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none font-mono"
-                                                            placeholder="0.00"
-                                                        />
+                                                {/* Refund Percentage Selector */}
+                                                <div className="space-y-3">
+                                                    <label className="text-[10px] font-bold uppercase text-brand-300">
+                                                        Refund to Customer (% of ${selectedBooking?.totalPrice || selectedBooking?.price || 0})
+                                                    </label>
+
+                                                    {/* Quick Select Buttons */}
+                                                    <div className="grid grid-cols-5 gap-2">
+                                                        {platformConfig.refundPresets.map(pct => (
+                                                            <button
+                                                                key={pct}
+                                                                onClick={() => setRefundPercentage(pct)}
+                                                                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all ${refundPercentage === pct
+                                                                    ? 'bg-brand-500 text-black shadow-lg'
+                                                                    : 'bg-background border border-border hover:border-brand-500'
+                                                                    }`}
+                                                            >
+                                                                {pct}%
+                                                            </button>
+                                                        ))}
                                                     </div>
                                                 </div>
+
+                                                {/* CALCULATED DISTRIBUTION PREVIEW (Read-Only) */}
+                                                {distribution && (
+                                                    <div className="bg-background border-2 border-brand-500/30 p-4 rounded-xl space-y-2">
+                                                        <p className="text-[10px] font-bold uppercase text-brand-400 mb-2">
+                                                            📊 Calculated Distribution (Backend-Verified)
+                                                        </p>
+                                                        <div className="grid grid-cols-2 gap-3 text-sm font-mono">
+                                                            <div>
+                                                                <span className="block text-[10px] uppercase text-muted-foreground">Escrowed Total</span>
+                                                                <span className="font-bold text-foreground">${distribution.totalPrice.toFixed(2)}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="block text-[10px] uppercase text-muted-foreground">Refund to Customer</span>
+                                                                <span className="font-bold text-green-500">${distribution.refund.toFixed(2)}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="block text-[10px] uppercase text-muted-foreground">Barber Payout</span>
+                                                                <span className="font-bold text-blue-500">${distribution.barberPayout.toFixed(2)}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="block text-[10px] uppercase text-muted-foreground">Platform Fee ({platformConfig.platformFeePercent}%)</span>
+                                                                <span className="font-bold text-purple-500">${distribution.platformFee.toFixed(2)}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="pt-2 border-t border-border text-[10px] text-muted-foreground">
+                                                            ✓ Validation: ${(distribution.refund + distribution.barberPayout + distribution.platformFee).toFixed(2)} === ${distribution.totalPrice.toFixed(2)}
+                                                        </div>
+                                                    </div>
+                                                )}
 
                                                 <div className="space-y-2">
                                                     <label className="text-[10px] font-bold uppercase text-brand-300">Resolution Note</label>
@@ -353,13 +420,14 @@ export default function DisputesPage() {
                                                         value={resolutionNote}
                                                         onChange={e => setResolutionNote(e.target.value)}
                                                         className="w-full h-24 bg-background border border-border rounded-lg p-3 text-sm focus:ring-2 focus:ring-brand-500 outline-none resize-none placeholder:text-muted-foreground/50"
-                                                        placeholder="Explain your decision. This note will be visible in the final record except for admin-internal details..."
+                                                        placeholder="Explain your decision. This note will be visible in the final record..."
                                                     />
                                                 </div>
 
                                                 <button
                                                     onClick={handleResolveClick}
-                                                    className="w-full py-3 bg-brand-500 hover:bg-brand-400 text-black font-bold rounded-xl transition-all shadow-lg shadow-brand-500/20 active:translate-y-0.5"
+                                                    disabled={!distribution}
+                                                    className="w-full py-3 bg-brand-500 hover:bg-brand-400 text-black font-bold rounded-xl transition-all shadow-lg shadow-brand-500/20 active:translate-y-0.5 disabled:opacity-50"
                                                 >
                                                     Review & Execute Settlement
                                                 </button>
@@ -393,15 +461,19 @@ export default function DisputesPage() {
                             <ul className="space-y-2 text-sm font-mono text-muted-foreground">
                                 <li className="flex justify-between">
                                     <span>Refund Customer:</span>
-                                    <span className="font-bold text-foreground">${parseFloat(refundAmount || '0').toFixed(2)}</span>
+                                    <span className="font-bold text-foreground">${distribution?.refund.toFixed(2)}</span>
                                 </li>
                                 <li className="flex justify-between">
                                     <span>Payout Barber:</span>
-                                    <span className="font-bold text-foreground">${parseFloat(barberPayout || '0').toFixed(2)}</span>
+                                    <span className="font-bold text-foreground">${distribution?.barberPayout.toFixed(2)}</span>
+                                </li>
+                                <li className="flex justify-between text-[10px]">
+                                    <span>Platform Fee:</span>
+                                    <span className="font-bold text-foreground">${distribution?.platformFee.toFixed(2)}</span>
                                 </li>
                                 <li className="flex justify-between pt-2 border-t border-border mt-2">
                                     <span>Total Movement:</span>
-                                    <span className="font-bold text-brand-500">${(parseFloat(refundAmount || '0') + parseFloat(barberPayout || '0')).toFixed(2)}</span>
+                                    <span className="font-bold text-brand-500">${distribution?.totalPrice.toFixed(2)}</span>
                                 </li>
                             </ul>
                         </div>

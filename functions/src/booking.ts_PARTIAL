@@ -1,0 +1,72 @@
+/**
+ * Expire stale bookings (Scheduled every 30 mins)
+ */
+export const expireBooking = functions.pubsub.schedule('every 30 minutes').onRun(async (context) => {
+    const NOW = admin.firestore.Timestamp.now();
+    const CUTOFF = new Date(NOW.toMillis() - 30 * 60 * 1000); // 30 mins ago
+
+    const snapshot = await db.collection('bookings')
+        .where('status', '==', 'requested')
+        .where('createdAt', '<=', CUTOFF)
+        .get();
+
+    if (snapshot.empty) {
+        console.log("No stale bookings found.");
+        return null;
+    }
+
+    console.log(`Found ${snapshot.size} stale bookings.`);
+
+    const promises = snapshot.docs.map(async (docSnap) => {
+        const bookingId = docSnap.id;
+        const booking = docSnap.data();
+
+        try {
+            await db.runTransaction(async (transaction) => {
+                const freshBookingSnap = await transaction.get(docSnap.ref);
+                if (!freshBookingSnap.exists) return;
+                const freshBooking = freshBookingSnap.data()!;
+
+                if (freshBooking.status !== 'requested') return; // Already handled
+
+                // Cancel It
+                transaction.update(docSnap.ref, {
+                    status: 'cancelled',
+                    cancelledAt: NOW,
+                    cancelledBy: 'system',
+                    cancellationReason: 'expired (no barber response)'
+                });
+
+                // Refund Escrow
+                const customerWalletRef = db.doc(`wallets/${booking.customerId}`);
+                const customerWallet = await transaction.get(customerWalletRef);
+
+                if (customerWallet.exists) {
+                    const totalPrice = booking.totalPrice || 0;
+                    transaction.update(customerWalletRef, {
+                        escrowBalance: admin.firestore.FieldValue.increment(-totalPrice),
+                        balance: admin.firestore.FieldValue.increment(totalPrice),
+                        updatedAt: NOW
+                    });
+
+                    const refundTxRef = db.collection("transactions").doc();
+                    transaction.set(refundTxRef, {
+                        userId: booking.customerId,
+                        bookingId,
+                        amount: totalPrice,
+                        type: "escrow_refund",
+                        status: "completed",
+                        timestamp: NOW,
+                        reason: 'Booking expired'
+                    });
+                }
+            });
+            console.log(`Expired booking ${bookingId}`);
+        } catch (err) {
+            console.error(`Failed to expire booking ${bookingId}`, err);
+        }
+    });
+
+    await Promise.all(promises);
+    return null;
+});
