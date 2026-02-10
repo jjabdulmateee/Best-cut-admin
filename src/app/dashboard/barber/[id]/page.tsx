@@ -16,6 +16,8 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SecurityActionModal } from "@/components/Security/SecurityActionModal";
 import { DisciplinaryPanel } from "@/components/BarberDetail/DisciplinaryPanel";
+import { ActionButtons } from "@/components/BarberDetail/ActionButtons";
+import { VerificationChecklist } from "@/components/BarberDetail/VerificationChecklist";
 
 export default function BarberDetailPage({ params }: { params: { id: string } }) {
   const [barber, setBarber] = useState<BarberApplication | null>(null);
@@ -72,8 +74,8 @@ export default function BarberDetailPage({ params }: { params: { id: string } })
       toast.success(`Account ${status}`);
       setShowDisableModal(false);
       await loadBarber();
-    } catch (err) {
-      toast.error("Failed to update account status");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update account status");
       console.error(err);
     } finally {
       setProcessing(false);
@@ -107,9 +109,9 @@ export default function BarberDetailPage({ params }: { params: { id: string } })
           <p className="text-sm uppercase tracking-[0.2em] text-gray-400">Barber Management</p>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold">{barber.name}</h1>
-            <span className={`text-xs px-2 py-1 rounded-full border ${barber.accountStatus === 'approved' ? 'border-success text-success bg-success/10' :
-              barber.accountStatus === 'disabled' ? 'border-gray-500 text-gray-400 bg-gray-800' :
-                'border-warning text-warning bg-warning/10'
+            <span className={`text-[10px] font-black tracking-widest px-3 py-1 rounded-md border shadow-sm ${barber.accountStatus === 'approved' ? 'border-success/30 text-success bg-success/10' :
+              barber.accountStatus === 'disabled' ? 'border-border text-muted-foreground bg-muted/20' :
+                'border-warning/30 text-warning bg-warning/10'
               }`}>
               {barber.accountStatus.toUpperCase()}
             </span>
@@ -127,34 +129,24 @@ export default function BarberDetailPage({ params }: { params: { id: string } })
         </div>
       </div>
 
-      {/* Global Account Approval (if pending) */}
-      {barber.accountStatus === 'pending' && (
-        <div className="rounded-xl border border-brand-600 bg-brand-800/50 p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div>
-            <h3 className="text-lg font-semibold text-white">New Application</h3>
-            <p className="text-gray-400 text-sm">Review details below and approve the global account to enable features.</p>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleAccountStatus("approved")}
-              disabled={processing}
-              className="px-6 py-2 bg-success text-black font-bold rounded-lg hover:bg-green-500 disabled:opacity-50"
-            >
-              Approve Account
-            </button>
-            <button
-              onClick={() => {
-                const r = window.prompt("Reason for rejection:");
-                if (r) handleAccountStatus("rejected", r);
-              }}
-              disabled={processing}
-              className="px-6 py-2 border border-danger text-danger font-semibold rounded-lg hover:bg-danger/10 disabled:opacity-50"
-            >
-              Reject
-            </button>
-          </div>
+      {/* Verification Checklist - The "Where do I confirm" part */}
+      <VerificationChecklist documents={barber.documents} />
+
+      {/* Global Account Actions (Always Visible) */}
+      <div className="rounded-2xl border border-border bg-card p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-1 h-full bg-brand-500" />
+        <div className="space-y-1">
+          <h3 className="text-xl font-bold text-foreground">Operational Decision</h3>
+          <p className="text-muted-foreground text-sm max-w-md">Commit a global status change to this partner entity. All actions are cryptographically logged.</p>
         </div>
-      )}
+        <div className="flex gap-4">
+          <ActionButtons
+            currentStatus={barber.accountStatus}
+            onAction={handleAccountStatus}
+            disabled={processing}
+          />
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Info & Docs */}

@@ -15,6 +15,7 @@ import {
     MoreHorizontal
 } from 'lucide-react';
 import { opsService } from '@/lib/services/opsService';
+import { financeService } from '@/lib/services/financeService';
 import { Booking } from '@/lib/types/booking';
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
@@ -50,6 +51,33 @@ export const BookingMonitor = () => {
             setSelectedBooking(null);
         } catch (error) {
             toast.error("Operation failed");
+        }
+    };
+
+    const handleRefund = async () => {
+        if (!selectedBooking) return;
+        const amountStr = prompt(`Refund Amount (Total Price: $${selectedBooking.totalPrice || 0}):`, (selectedBooking.totalPrice || 0).toString());
+        if (!amountStr) return;
+
+        const amount = parseFloat(amountStr);
+        if (isNaN(amount) || amount <= 0) {
+            toast.error("Invalid amount");
+            return;
+        }
+
+        const reason = prompt("Refund Reason:");
+        if (!reason) return;
+
+        try {
+            await financeService.issueRefund({
+                bookingId: selectedBooking.uid,
+                amount,
+                reason,
+                targetUserId: selectedBooking.customerId
+            });
+            toast.success("Refund processed successfully");
+        } catch (error: any) {
+            toast.error(error.message);
         }
     };
 
@@ -209,6 +237,12 @@ export const BookingMonitor = () => {
                                                     className="w-full py-2 bg-success/10 text-success border border-success/20 rounded-lg text-xs font-bold hover:bg-success/20 transition-colors"
                                                 >
                                                     FORCE COMPLETE
+                                                </button>
+                                                <button
+                                                    onClick={handleRefund}
+                                                    className="w-full py-2 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-lg text-xs font-bold hover:bg-blue-500/20 transition-colors mt-2"
+                                                >
+                                                    ISSUE REFUND
                                                 </button>
                                             </div>
                                         </div>

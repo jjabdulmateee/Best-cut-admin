@@ -54,3 +54,18 @@ export async function isAdmin(uid: string) {
     const adminSnap = await db.doc(`admins/${uid}`).get();
     return adminSnap.exists;
 }
+
+/**
+ * Gets validated platform config with fail-closed behavior.
+ * Throws if config is missing or invalid.
+ */
+export async function getValidatedConfig() {
+    const configSnap = await db.doc("platform/config").get();
+    if (!configSnap.exists) {
+        throw new functions.https.HttpsError(
+            "failed-precondition",
+            "Platform config not initialized. System halted for safety."
+        );
+    }
+    return configSnap.data();
+}

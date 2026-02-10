@@ -4,11 +4,12 @@ import { BarberStatus } from "@/lib/types/barber";
 import { LoadingSpinner } from "../LoadingSpinner";
 
 type Props = {
+  currentStatus: BarberStatus;
   disabled?: boolean;
   onAction: (status: BarberStatus, reason?: string) => Promise<void>;
 };
 
-export const ActionButtons = ({ disabled, onAction }: Props) => {
+export const ActionButtons = ({ currentStatus, disabled, onAction }: Props) => {
   const handleAction = async (status: BarberStatus) => {
     const needsReason = status === "rejected" || status === "disabled";
     let reason: string | undefined;
@@ -23,24 +24,45 @@ export const ActionButtons = ({ disabled, onAction }: Props) => {
 
   return (
     <div className="flex flex-wrap gap-3">
-      <ActionButton
-        label="Approve"
-        tone="success"
-        onClick={() => handleAction("approved")}
-        disabled={disabled}
-      />
-      <ActionButton
-        label="Reject"
-        tone="danger"
-        onClick={() => handleAction("rejected")}
-        disabled={disabled}
-      />
-      <ActionButton
-        label="Disable"
-        tone="warning"
-        onClick={() => handleAction("disabled")}
-        disabled={disabled}
-      />
+      {/* Approve Button */}
+      {currentStatus !== "approved" && (
+        <ActionButton
+          label="Approve"
+          tone="success"
+          onClick={() => handleAction("approved")}
+          disabled={disabled}
+        />
+      )}
+
+      {/* Reject Button */}
+      {currentStatus !== "rejected" && (
+        <ActionButton
+          label="Reject"
+          tone="danger"
+          onClick={() => handleAction("rejected")}
+          disabled={disabled}
+        />
+      )}
+
+      {/* Disable Button */}
+      {currentStatus !== "disabled" && (
+        <ActionButton
+          label="Disable"
+          tone="warning"
+          onClick={() => handleAction("disabled")}
+          disabled={disabled}
+        />
+      )}
+
+      {/* Re-enable Button (Only if disabled) */}
+      {currentStatus === "disabled" && (
+        <ActionButton
+          label="Re-enable"
+          tone="success"
+          onClick={() => handleAction("approved")}
+          disabled={disabled}
+        />
+      )}
     </div>
   );
 };
@@ -67,7 +89,7 @@ const ActionButton = ({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-60 ${styles[tone]}`}
+      className={`px-4 py-2 rounded-lg font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${styles[tone]}`}
     >
       {disabled ? (
         <span className="flex items-center gap-2">

@@ -49,9 +49,14 @@ export const ConfigPanel = () => {
 
     return (
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
-            <div className="p-6 border-b border-border bg-muted/30 flex items-center gap-3">
-                <Lock size={18} className="text-muted-foreground" />
-                <h3 className="text-sm font-bold uppercase tracking-widest text-foreground">Platform Configuration</h3>
+            <div className="p-6 border-b border-border bg-muted/30 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <Lock size={18} className="text-muted-foreground" />
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-foreground">Platform Configuration</h3>
+                </div>
+                <a href="/dashboard/config" className="text-[10px] font-bold uppercase text-brand-500 hover:underline">
+                    View Full Settings
+                </a>
             </div>
 
             <div className="p-6 space-y-6">

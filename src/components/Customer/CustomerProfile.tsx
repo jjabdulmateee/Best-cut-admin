@@ -57,7 +57,7 @@ export function CustomerProfile({ id }: Props) {
                 toast.success("Customer Suspended");
             } else if (actionModal.type === 'warn') {
                 // Just log warning for now, backend would send email
-                await customerService.updateStatus(customer.uid, customer.status, reason, { "metadata.notes": `WARN: ${reason}` });
+                await customerService.updateStatus(customer.uid, customer.status, reason, { metadata: { notes: `WARN: ${reason}` } });
                 toast.success("Warning Logged");
             }
             await loadCustomer();
@@ -99,8 +99,8 @@ export function CustomerProfile({ id }: Props) {
 
                         {/* Status Badge */}
                         <div className={`px-4 py-2 rounded-xl font-bold uppercase tracking-widest text-xs flex items-center gap-2 border ${customer.status === 'active' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                                customer.status === 'banned' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                    'bg-orange-500/10 text-orange-500 border-orange-500/20'
+                            customer.status === 'banned' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                'bg-orange-500/10 text-orange-500 border-orange-500/20'
                             }`}>
                             {customer.status === 'active' && <CheckCircle size={14} />}
                             {customer.status === 'banned' && <Ban size={14} />}
@@ -239,9 +239,9 @@ export function CustomerProfile({ id }: Props) {
                                 onClick={executeAction}
                                 disabled={!reason.trim() || processing}
                                 className={`flex-1 py-3 rounded-xl font-bold text-white transition-all ${!reason.trim() ? 'opacity-50 cursor-not-allowed bg-muted' :
-                                        actionModal.type === 'ban' ? 'bg-red-500 hover:bg-red-600' :
-                                            actionModal.type === 'suspend' ? 'bg-orange-500 hover:bg-orange-600' :
-                                                'bg-yellow-500 hover:bg-yellow-600'
+                                    actionModal.type === 'ban' ? 'bg-red-500 hover:bg-red-600' :
+                                        actionModal.type === 'suspend' ? 'bg-orange-500 hover:bg-orange-600' :
+                                            'bg-yellow-500 hover:bg-yellow-600'
                                     }`}
                             >
                                 {processing ? "Processing..." : "Confirm Action"}

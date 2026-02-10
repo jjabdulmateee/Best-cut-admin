@@ -1,4 +1,4 @@
-export type BarberStatus = "pending" | "approved" | "rejected" | "disabled";
+export type BarberStatus = "draft" | "pending" | "approved" | "rejected" | "disabled";
 export type ServiceStatus = "pending" | "approved" | "rejected";
 
 export type Strike = {

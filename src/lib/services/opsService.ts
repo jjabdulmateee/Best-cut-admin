@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { Booking } from "../types/booking";
 import { SystemConfig } from "../types/config";
+import { configService } from "./configService";
 
 class OpsService {
     /**
@@ -38,30 +39,15 @@ class OpsService {
 
     /**
      * Updates global platform configuration.
-     * All fields are updated directly in Firestore.
+     * DEPRECATED: Redirects to configService for governance compliance.
      */
     async updateConfig(adminId: string, updates: Partial<SystemConfig>) {
-        const configRef = doc(db, "platform", "config");
-
-        // Direct Firestore update for all config fields including emergencyFreeze
-        const { updatedBy: _, updatedAt: __, ...data } = updates;
-        await setDoc(configRef, {
-            ...data,
-            updatedAt: serverTimestamp(),
-            updatedBy: adminId
-        }, { merge: true });
-
-        // If emergencyFreeze changed, log it
-        if ('emergencyFreeze' in updates) {
-            const logRef = doc(collection(db, "admin_logs"));
-            await setDoc(logRef, {
-                adminId,
-                action: updates.emergencyFreeze ? "SYSTEM_FREEZE_ACTIVATE" : "SYSTEM_FREEZE_DEACTIVATE",
-                reason: "Admin update from dashboard",
-                timestamp: serverTimestamp(),
-                severity: "CRITICAL"
-            });
-        }
+        // Forward to new governance service
+        // We use a generic reason since this comes from the "Quick Actions" panel
+        await configService.updateConfig(
+            updates as any,
+            "Quick Action from Ops Control Panel"
+        );
     }
 
     /**

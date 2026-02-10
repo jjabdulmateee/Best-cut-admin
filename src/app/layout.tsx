@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { ToasterProvider } from "@/components/ToasterProvider";
+import { ThemeProvider } from "@/context/ThemeProvider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -19,7 +20,6 @@ export const metadata: Metadata = {
   description: "Admin dashboard for managing Best Cut barber applications",
 };
 
-import { ThemeProvider } from "@/context/ThemeProvider";
 
 export default function RootLayout({
   children,

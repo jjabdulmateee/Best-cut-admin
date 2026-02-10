@@ -118,8 +118,8 @@ export default function FleetManagementPage() {
                             key={f}
                             onClick={() => setStatusFilter(f)}
                             className={`px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${statusFilter === f
-                                    ? "bg-emerald-600 text-white shadow-lg"
-                                    : "text-muted-foreground hover:bg-muted/50"
+                                ? "bg-emerald-600 text-white shadow-lg"
+                                : "text-muted-foreground hover:bg-muted/50"
                                 }`}
                         >
                             {f}
@@ -157,8 +157,8 @@ export default function FleetManagementPage() {
                                         </div>
                                     </div>
                                     <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-widest shrink-0 ${barber.accountStatus === "approved" ? "bg-emerald-500/20 text-emerald-400" :
-                                            barber.accountStatus === "pending" ? "bg-orange-500/20 text-orange-400" :
-                                                "bg-danger/20 text-danger"
+                                        barber.accountStatus === "pending" ? "bg-orange-500/20 text-orange-400" :
+                                            "bg-danger/20 text-danger"
                                         }`}>
                                         {barber.accountStatus}
                                     </span>
@@ -200,7 +200,7 @@ export default function FleetManagementPage() {
                         <UserX size={32} className="text-muted-foreground" />
                     </div>
                     <h3 className="font-bold text-white">No matches found</h3>
-                    <p className="text-sm text-muted-foreground mt-1">Adjust your filters or search terms to find the barber you're looking for.</p>
+                    <p className="text-sm text-muted-foreground mt-1">Adjust your filters or search terms to find the barber you&apos;re looking for.</p>
                 </div>
             )}
         </div>

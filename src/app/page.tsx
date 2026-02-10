@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { motion, AnimatePresence } from "framer-motion";
-import { ThemeToggle } from "@/components/Layout/DashboardHeader"; // Reusing the same toggle
+// Replaced broken import
 import { Mail, Lock, ShieldCheck, ChevronRight } from "lucide-react";
 import { ThemeToggle as StandaloneThemeToggle } from "@/components/ThemeToggle";
 

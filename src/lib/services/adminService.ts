@@ -53,16 +53,33 @@ class AdminService {
       updateData.disabledReason = reason;
     }
 
-    await updateDoc(barberRef, updateData);
+    console.log(`[AdminService] Attempting to update account status for ${barberId} to ${status}`);
+    console.log(`[AdminService] Current Admin: ${user?.email} (${user?.uid})`);
+
+    console.log(`[AdminService] Attempting to update account status for ${barberId} to ${status}`);
+    console.log(`[AdminService] Current Admin: ${user?.email} (${user?.uid})`);
 
     const actionMap: Record<BarberStatus, string> = {
       approved: "APPROVE_ACCOUNT",
       rejected: "REJECT_ACCOUNT",
       disabled: "DISABLE_ACCOUNT",
       pending: "RESET_ACCOUNT",
+      draft: "INIT_ACCOUNT",
     };
 
-    await this.logAction(actionMap[status], barberId, reason ? { reason } : {});
+    try {
+      console.log("[AdminService] Executing updateDoc...");
+      await updateDoc(barberRef, updateData);
+      console.log("[AdminService] updateDoc successful. Logging action...");
+      await this.logAction(actionMap[status], barberId, reason ? { reason } : {});
+      console.log("[AdminService] logAction successful.");
+    } catch (err) {
+      console.error("Critical: updateAccountStatus failed", err);
+      if (err instanceof Error) {
+        throw new Error(`Permission or Firestore Error: ${err.message}`);
+      }
+      throw err;
+    }
   }
 
   // Update Service-Specific Status

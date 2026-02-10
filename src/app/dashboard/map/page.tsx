@@ -7,7 +7,7 @@ import { useGeoZones } from "@/hooks/useGeoZones";
 import { BarberApplication } from "@/lib/types/barber";
 import { GeoZone } from "@/lib/types/geo";
 import { BarberMapDetail } from "@/components/Map/BarberMapDetail";
-import { MapPlaceholder } from "@/components/Map/MapPlaceholder";
+
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import {
     Filter, Search, Map as MapIcon,
@@ -20,7 +20,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import toast from "react-hot-toast";
 import { useAdminMode } from "@/context/AdminModeContext";
 
-const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
 
 export default function MapDashboard() {
     const { mode } = useAdminMode();

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isAdmin = exports.assertBarberActive = exports.assertUserActive = exports.assertNotFrozen = exports.db = void 0;
+exports.getValidatedConfig = exports.isAdmin = exports.assertBarberActive = exports.assertUserActive = exports.assertNotFrozen = exports.db = void 0;
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 if (admin.apps.length === 0) {
@@ -46,4 +46,16 @@ async function isAdmin(uid) {
     return adminSnap.exists;
 }
 exports.isAdmin = isAdmin;
+/**
+ * Gets validated platform config with fail-closed behavior.
+ * Throws if config is missing or invalid.
+ */
+async function getValidatedConfig() {
+    const configSnap = await exports.db.doc("platform/config").get();
+    if (!configSnap.exists) {
+        throw new functions.https.HttpsError("failed-precondition", "Platform config not initialized. System halted for safety.");
+    }
+    return configSnap.data();
+}
+exports.getValidatedConfig = getValidatedConfig;
 //# sourceMappingURL=shared.js.map

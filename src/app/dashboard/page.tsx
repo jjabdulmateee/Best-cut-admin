@@ -18,7 +18,9 @@ import {
   Cpu,
   BarChart3,
   Command,
-  Users
+  Users,
+  Type as TypeIcon,
+  DollarSign
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAdminMode } from "@/context/AdminModeContext";
@@ -31,10 +33,11 @@ export default function DashboardPage() {
   // Note: Hooks rules require us to call it always, but we can ignore the result or conditionally skip internal logic 
   // if the hook supports it. Since standard useBarbers might not support conditional fetch yet, 
   // we will call it but ignore data in Customer Mode. Ideally we refactor the hook later.
+  // Debug logging - removed for production build
   const { barbers, loading, error } = useBarbers("all");
 
   const pendingBarbers = useMemo(
-    () => barbers.filter((barber) => barber.status === "pending"),
+    () => barbers.filter((barber) => barber.accountStatus === "pending"),
     [barbers],
   );
 
@@ -93,6 +96,15 @@ export default function DashboardPage() {
       href: "/dashboard/fleet",
       color: "border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10",
       badge: "ROSTER"
+    },
+    {
+      title: "FINANCE",
+      subtitle: "Wallet Dashboard",
+      desc: "Global wallet visibility, ledger inspection, and safety guardrails.",
+      icon: <DollarSign className="text-green-400" size={24} />,
+      href: "/dashboard/wallets",
+      color: "border-green-500/20 bg-green-500/5 hover:bg-green-500/10",
+      badge: "AUDIT"
     }
   ];
 
@@ -142,6 +154,15 @@ export default function DashboardPage() {
       href: "/dashboard/analytics",
       color: "border-cyan-500/20 bg-cyan-500/5 hover:bg-cyan-500/10",
       badge: "DATA"
+    },
+    {
+      title: "PLATFORM CONFIG",
+      subtitle: "Governance & Config",
+      desc: "Versioned configuration, rollbacks, and emergency controls.",
+      icon: <TypeIcon className="text-slate-400" size={24} />,
+      href: "/dashboard/config",
+      color: "border-slate-500/20 bg-slate-500/5 hover:bg-slate-500/10",
+      badge: "GOVERNANCE"
     },
     {
       title: "OPS COMMAND",

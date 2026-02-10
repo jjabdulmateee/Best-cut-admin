@@ -6,6 +6,7 @@ export * from "./booking";
 export * from "./wallet";
 export * from "./enforcement";
 export * from "./disputes";
+export * from "./config";
 
 /**
  * Toggle Emergency Freeze (Admin only)

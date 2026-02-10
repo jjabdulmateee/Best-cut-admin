@@ -22,6 +22,7 @@ __exportStar(require("./booking"), exports);
 __exportStar(require("./wallet"), exports);
 __exportStar(require("./enforcement"), exports);
 __exportStar(require("./disputes"), exports);
+__exportStar(require("./config"), exports);
 /**
  * Toggle Emergency Freeze (Admin only)
  */

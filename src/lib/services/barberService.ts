@@ -1,6 +1,6 @@
 import { collection, doc, getDoc, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../firebase/config";
-import { BarberApplication, BarberStatus } from "../types/barber";
+import { BarberApplication, BarberStatus, ServiceStatus } from "../types/barber";
 
 export const getBarberApplication = async (
   id: string,
@@ -11,20 +11,23 @@ export const getBarberApplication = async (
   const data = snap.data();
 
   // Migration Logic on Read
-  const status = data.status || "pending";
+  const normalizedStatus = (data.status || "pending").toLowerCase() as BarberStatus;
+  const normalizedAccountStatus = (data.accountStatus || normalizedStatus).toLowerCase() as BarberStatus;
+
   return {
     uid: id,
     ...data,
-    accountStatus: data.accountStatus || data.status || "pending", // Use new field or fallback to old
-    shopService: data.shopService || (data.status === 'approved' ? 'approved' : 'pending'),
-    doorstepService: data.doorstepService || (data.status === 'approved' ? 'approved' : 'pending'),
+    status: normalizedStatus,
+    accountStatus: normalizedAccountStatus,
+    shopService: (data.shopService || (normalizedStatus === 'approved' ? 'approved' : 'pending')).toLowerCase() as ServiceStatus,
+    doorstepService: (data.doorstepService || (normalizedStatus === 'approved' ? 'approved' : 'pending')).toLowerCase() as ServiceStatus,
     trust: data.trust || {
       avgRating: 0,
       totalReviews: 0,
       ratingBreakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
     },
     // Phase E Defaults
-    mapVisibility: data.mapVisibility ?? (data.accountStatus === 'approved' || data.status === 'approved'),
+    mapVisibility: data.mapVisibility ?? (normalizedStatus === 'approved'),
     shopLocationVerified: data.shopLocationVerified ?? false,
     doorstepRadiusLocked: data.doorstepRadiusLocked ?? true,
   } as BarberApplication;
@@ -52,22 +55,23 @@ export const subscribeToBarbers = (
       const list: BarberApplication[] = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        const legacyStatus = data.status || "pending";
+        const normalizedStatus = (data.status || "pending").toLowerCase() as BarberStatus;
+        const normalizedAccountStatus = (data.accountStatus || normalizedStatus).toLowerCase() as BarberStatus;
 
         list.push({
           uid: docSnap.id,
           ...data,
-          // Migration Logic
-          accountStatus: data.accountStatus || legacyStatus,
-          shopService: data.shopService || (legacyStatus === 'approved' ? 'approved' : 'pending'),
-          doorstepService: data.doorstepService || (legacyStatus === 'approved' ? 'approved' : 'pending'),
+          status: normalizedStatus,
+          accountStatus: normalizedAccountStatus,
+          shopService: (data.shopService || (normalizedStatus === 'approved' ? 'approved' : 'pending')).toLowerCase() as ServiceStatus,
+          doorstepService: (data.doorstepService || (normalizedStatus === 'approved' ? 'approved' : 'pending')).toLowerCase() as ServiceStatus,
           trust: data.trust || {
             avgRating: 0,
             totalReviews: 0,
             ratingBreakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
           },
           // Phase E Defaults
-          mapVisibility: data.mapVisibility ?? (legacyStatus === 'approved'),
+          mapVisibility: data.mapVisibility ?? (normalizedStatus === 'approved'),
           shopLocationVerified: data.shopLocationVerified ?? false,
           doorstepRadiusLocked: data.doorstepRadiusLocked ?? true,
         } as BarberApplication);
