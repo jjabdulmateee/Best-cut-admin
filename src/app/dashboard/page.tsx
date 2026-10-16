@@ -37,7 +37,11 @@ export default function DashboardPage() {
   const { barbers, loading, error } = useBarbers("all");
 
   const pendingBarbers = useMemo(
-    () => barbers.filter((barber) => barber.accountStatus === "pending"),
+    () =>
+      barbers.filter(
+        (barber) =>
+          barber.accountStatus === "pending" || barber.status === "pending",
+      ),
     [barbers],
   );
 

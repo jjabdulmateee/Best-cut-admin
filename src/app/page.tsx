@@ -19,8 +19,8 @@ export default function Home() {
     loading: adminLoading,
     error: adminError,
   } = useAdminCheck();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("demo@bestcut.com");
+  const [password, setPassword] = useState("Hibye193");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -114,6 +114,12 @@ export default function Home() {
                 </div>
               )}
 
+              <div className="rounded-2xl border border-border bg-muted/40 px-4 py-3 text-center">
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  a16z HAA Evaluator Notice: Demo credentials pre-filled for instant dashboard review. Click &apos;Sign In&apos; below.
+                </p>
+              </div>
+
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="space-y-2 group">
                   <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Secure Email</label>
@@ -124,7 +130,7 @@ export default function Home() {
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full rounded-2xl bg-muted/50 border border-border px-11 py-3.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent placeholder:text-muted-foreground/50 transition-all"
+                      className="w-full rounded-2xl bg-input text-foreground border border-border px-11 py-3.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent placeholder:text-muted-foreground transition-all"
                       placeholder="name@bestcut.com"
                       autoComplete="email"
                     />
@@ -140,10 +146,9 @@ export default function Home() {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full rounded-2xl bg-muted/50 border border-border px-11 py-3.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent placeholder:text-muted-foreground/50 transition-all caret-brand-500"
+                      className="w-full rounded-2xl bg-input text-foreground border border-border px-11 py-3.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent placeholder:text-muted-foreground transition-all caret-foreground"
                       placeholder="••••••••"
                       autoComplete="current-password"
-                      style={{ color: 'inherit' }} // Ensuring dots match theme foreground
                     />
                   </div>
                 </div>

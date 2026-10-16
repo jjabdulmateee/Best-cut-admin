@@ -2,6 +2,27 @@ import { collection, doc, getDoc, onSnapshot, query, where } from "firebase/fire
 import { db } from "../firebase/config";
 import { BarberApplication, BarberStatus, ServiceStatus } from "../types/barber";
 
+const BARBER_STATUSES: readonly BarberStatus[] = [
+  "draft",
+  "pending",
+  "approved",
+  "rejected",
+  "disabled",
+];
+
+/** Mobile signup writes "submitted"; the admin queue treats that as pending. */
+export const normalizeBarberStatus = (
+  raw: unknown,
+  fallback: BarberStatus = "pending",
+): BarberStatus => {
+  const value = typeof raw === "string" ? raw.toLowerCase() : "";
+  if (value === "submitted") return "pending";
+  if ((BARBER_STATUSES as readonly string[]).includes(value)) {
+    return value as BarberStatus;
+  }
+  return fallback;
+};
+
 export const getBarberApplication = async (
   id: string,
 ): Promise<BarberApplication | null> => {
@@ -10,9 +31,11 @@ export const getBarberApplication = async (
   if (!snap.exists()) return null;
   const data = snap.data();
 
-  // Migration Logic on Read
-  const normalizedStatus = (data.status || "pending").toLowerCase() as BarberStatus;
-  const normalizedAccountStatus = (data.accountStatus || normalizedStatus).toLowerCase() as BarberStatus;
+  // Migration Logic on Read. "submitted" (mobile signup) maps to pending.
+  const normalizedStatus = normalizeBarberStatus(data.status, "pending");
+  const normalizedAccountStatus = data.accountStatus
+    ? normalizeBarberStatus(data.accountStatus, normalizedStatus)
+    : normalizedStatus;
 
   return {
     uid: id,
@@ -41,11 +64,13 @@ export const subscribeToBarbers = (
 ) => {
   let baseQuery = collection(db, "barber_applications");
 
-  // Note: Querying mixed data (old vs new fields) is tricky.
-  // For now, we query by the legacy 'status' field if we want a specific status,
-  // as we are keeping it in sync during updates.
-  // Ideally, we would migrate all data in a batch, but "Read Migration" is safer for now.
-  const constraints = status === "all" ? [] : [where("status", "==", status)];
+  // Pending queue must include mobile signups stored as "submitted" or "pending".
+  const constraints =
+    status === "all"
+      ? []
+      : status === "pending"
+        ? [where("status", "in", ["pending", "submitted"])]
+        : [where("status", "==", status)];
 
   const q = query(baseQuery, ...constraints);
 
@@ -55,8 +80,10 @@ export const subscribeToBarbers = (
       const list: BarberApplication[] = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        const normalizedStatus = (data.status || "pending").toLowerCase() as BarberStatus;
-        const normalizedAccountStatus = (data.accountStatus || normalizedStatus).toLowerCase() as BarberStatus;
+        const normalizedStatus = normalizeBarberStatus(data.status, "pending");
+        const normalizedAccountStatus = data.accountStatus
+          ? normalizeBarberStatus(data.accountStatus, normalizedStatus)
+          : normalizedStatus;
 
         list.push({
           uid: docSnap.id,

@@ -15,6 +15,11 @@
 
 # production
 /build
+functions/lib/
+
+# secrets
+serviceAccountKey.json
+**/serviceAccountKey.json
 
 # misc
 .DS_Store
@@ -24,6 +29,7 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
 
 # local env files
 .env*.local

@@ -5,6 +5,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { auth, db } from "../firebase/config";
 import { BarberStatus } from "../types/barber";
@@ -53,12 +54,6 @@ class AdminService {
       updateData.disabledReason = reason;
     }
 
-    console.log(`[AdminService] Attempting to update account status for ${barberId} to ${status}`);
-    console.log(`[AdminService] Current Admin: ${user?.email} (${user?.uid})`);
-
-    console.log(`[AdminService] Attempting to update account status for ${barberId} to ${status}`);
-    console.log(`[AdminService] Current Admin: ${user?.email} (${user?.uid})`);
-
     const actionMap: Record<BarberStatus, string> = {
       approved: "APPROVE_ACCOUNT",
       rejected: "REJECT_ACCOUNT",
@@ -67,12 +62,21 @@ class AdminService {
       draft: "INIT_ACCOUNT",
     };
 
+    const userRef = doc(db, "users", barberId);
+
     try {
-      console.log("[AdminService] Executing updateDoc...");
-      await updateDoc(barberRef, updateData);
-      console.log("[AdminService] updateDoc successful. Logging action...");
-      await this.logAction(actionMap[status], barberId, reason ? { reason } : {});
-      console.log("[AdminService] logAction successful.");
+      const batch = writeBatch(db);
+      batch.update(barberRef, updateData);
+      // Flutter reads users/{id}.status and users/{id}.accountStatus for live approval state.
+      batch.set(
+        userRef,
+        {
+          status,
+          accountStatus: status,
+        },
+        { merge: true },
+      );
+      await batch.commit();
     } catch (err) {
       console.error("Critical: updateAccountStatus failed", err);
       if (err instanceof Error) {
@@ -80,6 +84,8 @@ class AdminService {
       }
       throw err;
     }
+
+    await this.logAction(actionMap[status], barberId, reason ? { reason } : {});
   }
 
   // Update Service-Specific Status
@@ -119,14 +125,19 @@ class AdminService {
   ): Promise<void> {
     const user = auth.currentUser;
     const ref = doc(collection(db, "admin_logs"));
-    await setDoc(ref, {
-      action,
-      targetId,
-      adminId: user?.uid ?? "unknown",
-      adminEmail: user?.email ?? "unknown",
-      metadata,
-      timestamp: serverTimestamp(),
-    });
+    try {
+      await setDoc(ref, {
+        action,
+        targetId,
+        adminId: user?.uid ?? "unknown",
+        adminEmail: user?.email ?? "unknown",
+        metadata,
+        timestamp: serverTimestamp(),
+      });
+    } catch (err) {
+      // Audit rules can reject the client write. The status change already committed.
+      console.error("[AdminService] Audit log write failed; approval was kept.", err);
+    }
   }
 }
 

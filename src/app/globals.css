@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 :root {
+  color-scheme: dark;
   --background: #000000;
   --foreground: #ffffff;
   --card: #121212;
@@ -23,6 +24,7 @@
 }
 
 .light-theme {
+  color-scheme: light;
   --background: #ffffff;
   --foreground: #000000;
   --card: #f9f9f9;
@@ -68,5 +70,24 @@ a {
   h4 {
     font-weight: 700;
     letter-spacing: -0.02em;
+  }
+
+  input,
+  textarea,
+  select {
+    color: var(--foreground);
+    caret-color: var(--foreground);
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--foreground);
+    caret-color: var(--foreground);
+    box-shadow: 0 0 0 1000px var(--input) inset;
+    transition: background-color 9999s ease-out 0s;
   }
 }

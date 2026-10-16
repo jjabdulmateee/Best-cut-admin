@@ -6,6 +6,7 @@ type Props = {
 };
 
 const badgeColors: Record<BarberApplication["accountStatus"], string> = {
+  draft: "bg-muted text-muted-foreground",
   pending: "bg-warning/10 text-warning",
   approved: "bg-success/10 text-success",
   rejected: "bg-danger/10 text-danger",

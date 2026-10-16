@@ -27,6 +27,14 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Users Collection (shared with the Flutter app)
+    // Admins mirror approval status here so the mobile app can read it.
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create, update: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
+      allow delete: if isAdmin();
+    }
+
     // Barber Applications Collection
     // Note: Barbers use this for their primary profile/status in both apps
     match /barber_applications/{barberId} {
